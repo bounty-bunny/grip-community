@@ -38,12 +38,15 @@ class AcceleratorProvider(Protocol):
 def detect_vendor(which=shutil.which) -> str | None:
     """Which vendor's stack is present on this host, or None.
 
-    Deliberately unambitious: it looks for the NVIDIA SDK or CLI and nothing
-    else, because nothing else is implemented. When a second provider lands,
-    finding both is an error to report, not a choice to make silently.
+    NVIDIA takes priority because it is the validated adapter; AMD (amdsmi /
+    amd-smi) is detected as the experimental second provider. On the rare host
+    with both SDKs present, NVIDIA wins - set GRIP so one is visible if you need
+    the other.
     """
     if importlib.util.find_spec("pynvml") is not None or which("nvidia-smi"):
         return "nvidia"
+    if importlib.util.find_spec("amdsmi") is not None or which("amd-smi"):
+        return "amd"
     return None
 
 
@@ -52,6 +55,10 @@ def provider_class(vendor: str):
         from .collect import NvmlProvider  # noqa: PLC0415
 
         return NvmlProvider
+    if vendor == "amd":
+        from .amd import AmdSmiProvider  # noqa: PLC0415
+
+        return AmdSmiProvider
     raise RuntimeError(f"no accelerator provider for vendor {vendor!r}")
 
 
@@ -62,6 +69,7 @@ def provider_for_host() -> AcceleratorProvider:
     if vendor is None:
         raise RuntimeError(
             "no supported accelerator SDK found on this host "
-            "(NVIDIA needs pynvml: pip install 'grip[gpu]')"
+            "(NVIDIA needs pynvml: pip install 'grip[gpu]'; "
+            "AMD needs amdsmi from ROCm, e.g. pip install /opt/rocm/share/amd_smi)"
         )
     return provider_class(vendor)()
