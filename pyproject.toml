@@ -1,0 +1,35 @@
+# Standalone packaging for GRIP Community Edition. The export build script
+# (scripts/build_community_export.sh) copies this in as the export's pyproject.
+# It packages ONLY the open foundation; the commercial engine/backend/auth are
+# not present in the export tree at all.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "grip-community"
+version = "0.1.0"
+description = "Open GPU telemetry foundation: discover, monitor, export, Prometheus — single host."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: System :: Monitoring",
+]
+dependencies = [
+  "pydantic>=2.6",
+  "typer>=0.12",
+  "numpy>=1.24",      # the synthetic simulator (--demo)
+]
+
+[project.optional-dependencies]
+# NVML live collection. Without it, only --demo works.
+gpu = ["pynvml>=11.5"]
+
+[project.scripts]
+grip-community = "grip.community.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["grip"]
