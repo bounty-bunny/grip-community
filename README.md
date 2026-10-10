@@ -58,7 +58,7 @@ grip_gpu_finding{gpu="1",severity="warn",signal="temperature_c"} 1
 | Vendor | Collection | Notes |
 |---|---|---|
 | NVIDIA (data-center & workstation) | Yes, via NVML (`pynvml`) | Primary. Driver + NVML must be present. |
-| AMD (Instinct) | Experimental | A community vendor adapter can implement the same `provider` seam; not packaged here yet. |
+| AMD (Instinct) | **Experimental** | Packaged telemetry collection via `amdsmi` (ships with ROCm). Untested on real AMD hardware by us; amdsmi field names vary by ROCm version, so treat it as best-effort. Collection only — no detection claim. |
 
 CPU/OS: Linux and Windows for `discover`/`monitor`/`export`/`metrics`. The
 systemd service installer (in the full agent) is Linux-only.

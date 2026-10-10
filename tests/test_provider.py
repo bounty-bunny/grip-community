@@ -28,10 +28,13 @@ def test_detect_nvidia_by_cli_or_sdk(monkeypatch):
     assert detect_vendor(which=lambda n: None) == "nvidia"
 
 
-def test_provider_class_is_the_only_vendor_branch():
+def test_provider_class_maps_known_vendors_and_rejects_the_rest():
+    from grip.agent.amd import AmdSmiProvider
+
     assert provider_class("nvidia") is NvmlProvider
+    assert provider_class("amd") is AmdSmiProvider  # experimental, but a real branch now
     with pytest.raises(RuntimeError, match="no accelerator provider"):
-        provider_class("amd")
+        provider_class("intel")
 
 
 def test_no_supported_stack_is_a_plain_sentence(monkeypatch):
