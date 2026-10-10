@@ -20,6 +20,7 @@ python -m grip.community.cli discover            # list your GPUs
 python -m grip.community.cli monitor             # live table, Ctrl-C to stop
 python -m grip.community.cli monitor --demo      # synthetic data — try it with no GPU
 python -m grip.community.cli export today.json   # or today.csv
+python -m grip.community.cli dashboard --demo    # local web UI at http://localhost:9835/
 python -m grip.community.cli metrics --port 9835 # Prometheus at :9835/metrics
 ```
 
@@ -78,7 +79,9 @@ is deliberately simple and transparent — read it; it hides nothing.
 | | Community (this) | GRIP Enterprise |
 |---|---|---|
 | GPU telemetry, local monitoring, export, Prometheus | ✓ | ✓ |
+| Local single-host web dashboard | ✓ | ✓ |
 | Transparent single-device threshold checks | ✓ | ✓ |
+| **Multi-cluster fleet dashboard** | ✗ | ✓ |
 | **Peer-relative gray-degradation detection** | ✗ | ✓ |
 | Workload impact & capacity attribution | ✗ | ✓ |
 | Episodes, incidents, history across jobs | ✗ | ✓ |
@@ -99,6 +102,6 @@ intelligence in this free edition. Those are the commercial product.
 
 ## Roadmap
 
-A community dashboard, a packaged AMD adapter, and more exporters. The commercial
+A packaged AMD adapter and more exporters. The commercial
 reliability intelligence and fleet plane are separate; this edition stays a clean,
 honest telemetry foundation.
