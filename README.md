@@ -30,6 +30,12 @@ is labelled as such and is never a measurement of your hardware.
 
 ## Sample output
 
+The local dashboard (`grip-community dashboard`), here on `--demo` synthetic data:
+
+![GRIP Community Edition dashboard — single-host GPU table with example-detector status](dashboard.png)
+
+In the terminal:
+
 ```
 14:46:43  node=local
 gpu   temp        power   util   clock  status
