@@ -20,6 +20,7 @@ import typer
 
 from ..detect import ExampleThresholdDetector, Severity, worst
 from ..schema import GpuSample
+from ._dashboard import DASHBOARD_HTML
 
 app = typer.Typer(add_completion=False, help="GRIP Community Edition — open GPU telemetry.")
 _DET = ExampleThresholdDetector()
@@ -165,40 +166,89 @@ def _prometheus(samples: list[GpuSample], findings) -> str:
     return "\n".join(lines) + "\n"
 
 
-@app.command()
-def metrics(
-    port: int = typer.Option(9835, help="Prometheus scrape port"),
-    demo: bool = typer.Option(False),
-    node_id: str = typer.Option("local"),
-) -> None:
-    """Serve Prometheus-compatible metrics at http://<host>:<port>/metrics (stdlib only)."""
+def _payload(demo: bool, node_id: str) -> dict:
+    """Current telemetry + example-detector findings, as the dashboard consumes it."""
+    samples = _collect(demo, node_id)
+    findings = _DET.assess(samples)
+    by_gpu: dict[int, list] = {}
+    for f in findings:
+        by_gpu.setdefault(f.gpu_index, []).append(f)
+    gpus = []
+    for s in sorted(samples, key=lambda x: x.gpu_index):
+        g = by_gpu.get(s.gpu_index, [])
+        sig = s.signals
+        gpus.append({
+            "index": s.gpu_index, "uuid": s.gpu_uuid,
+            "temp": round(sig.temperature_c, 1), "power": round(sig.power_draw_w),
+            "limit": round(sig.power_limit_w), "util": round(sig.gpu_utilization_pct),
+            "clock": round(sig.sm_clock_mhz), "mem": round(sig.memory_used_mb),
+            "status": worst(g).value, "findings": [f.message for f in g],
+        })
+    return {
+        "node": node_id, "demo": demo,
+        "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "gpus": gpus,
+    }
+
+
+# The dashboard page lives in _dashboard.py (its long HTML/CSS lines are exempt
+# from E501 there); the Python that serves it stays lint-clean.
+
+
+def _run_server(port: int, demo: bool, node_id: str, label: str) -> None:
     from http.server import BaseHTTPRequestHandler, HTTPServer  # noqa: PLC0415
 
-    cli = {"demo": demo, "node_id": node_id}
+    cfg = {"demo": demo, "node_id": node_id}
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):  # quiet
             pass
 
-        def do_GET(self):
-            if self.path.rstrip("/") not in ("/metrics", ""):
-                self.send_response(404)
-                self.end_headers()
-                return
-            try:
-                samples = _collect(cli["demo"], cli["node_id"])
-                body = _prometheus(samples, _DET.assess(samples)).encode()
-                self.send_response(200)
-                self.send_header("Content-Type", "text/plain; version=0.0.4")
-                self.end_headers()
-                self.wfile.write(body)
-            except Exception as e:  # noqa: BLE001
-                self.send_response(500)
-                self.end_headers()
-                self.wfile.write(f"# scrape failed: {e}\n".encode())
+        def _send(self, code: int, ctype: str, body: bytes) -> None:
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.end_headers()
+            self.wfile.write(body)
 
-    typer.echo(f"serving metrics on :{port}/metrics" + ("  [DEMO]" if demo else ""))
+        def do_GET(self):
+            path = self.path.split("?")[0].rstrip("/")
+            try:
+                if path in ("", "/index.html"):
+                    self._send(200, "text/html; charset=utf-8", DASHBOARD_HTML.encode())
+                elif path == "/api/telemetry":
+                    self._send(200, "application/json",
+                               json.dumps(_payload(cfg["demo"], cfg["node_id"])).encode())
+                elif path == "/metrics":
+                    samples = _collect(cfg["demo"], cfg["node_id"])
+                    self._send(200, "text/plain; version=0.0.4",
+                               _prometheus(samples, _DET.assess(samples)).encode())
+                else:
+                    self._send(404, "text/plain", b"not found\n")
+            except Exception as e:  # noqa: BLE001
+                self._send(500, "text/plain", f"# failed: {e}\n".encode())
+
+    typer.echo(label + ("  [DEMO]" if demo else ""))
     HTTPServer(("0.0.0.0", port), H).serve_forever()
+
+
+@app.command()
+def metrics(
+    port: int = typer.Option(9835, help="port"),
+    demo: bool = typer.Option(False),
+    node_id: str = typer.Option("local"),
+) -> None:
+    """Serve Prometheus metrics at /metrics (and the dashboard at /) — stdlib only."""
+    _run_server(port, demo, node_id, f"metrics on :{port}/metrics  ·  dashboard on :{port}/")
+
+
+@app.command()
+def dashboard(
+    port: int = typer.Option(9835, help="port"),
+    demo: bool = typer.Option(False),
+    node_id: str = typer.Option("local"),
+) -> None:
+    """Serve a local single-host web dashboard at http://localhost:<port>/ (stdlib only)."""
+    _run_server(port, demo, node_id, f"dashboard on http://localhost:{port}/  ·  /metrics too")
 
 
 if __name__ == "__main__":
