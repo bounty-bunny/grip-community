@@ -10,7 +10,24 @@ leaves your machine.
 > compares each GPU against fixed thresholds and will miss a GPU that is quietly
 > slower than its neighbours while every absolute reading still looks fine.
 > Catching that is what GRIP's commercial product is for. See
-> [Community vs Enterprise](#community-vs-enterprise).
+> [Community vs Enterprise](#community-vs-enterprise) and
+> [Request an enterprise pilot](#request-an-enterprise-pilot).
+
+## How it fits together
+
+```mermaid
+flowchart LR
+  A["grip.agent<br/>NVML / amdsmi collection"] --> S["grip.schema<br/>telemetry"]
+  S --> D["grip.detect.Detector<br/>(interface)"]
+  D --> EX["Example detector<br/>single-device, transparent"]
+  EX --> UI["monitor · dashboard"]
+  S --> P["/metrics<br/>Prometheus"]
+  S -. "opt-in, in-VPC" .-> ENG["Peer-relative detector<br/>+ fleet plane — commercial"]
+```
+
+The agent, schema, detector interface and example detector are this open edition.
+The peer-relative reliability engine and fleet plane are the commercial product;
+they implement the same `Detector` interface, so the same agent feeds both.
 
 ## Five-minute start
 
@@ -97,6 +114,22 @@ is deliberately simple and transparent — read it; it hides nothing.
 We do not claim advanced anomaly detection, predictive reliability, or fleet
 intelligence in this free edition. Those are the commercial product.
 
+## Request an enterprise pilot
+
+Want the thing Community Edition deliberately leaves out — peer-relative detection
+that flags a GPU quietly slower than its comparable peers while every absolute
+check still passes? That is a scoped pilot:
+
+- Runs the full stack **inside your network** (zero egress), or hosted if you prefer.
+- Observes a few **eligible nodes** (≥5 comparable GPUs per node) for ~2 weeks.
+- Compares GRIP's findings against your own, with the **false-alert bar agreed up
+  front**, and reports the result **either way** — including if GRIP adds nothing
+  your tools didn't already catch.
+
+Email **support@griplab.dev** or visit **[griplab.dev](https://griplab.dev)**. No
+guaranteed failure prediction, and not every environment qualifies — we say so
+plainly before anyone spends time.
+
 ## Known limitations
 
 - The example detector is single-device only — it catches over-temperature,
@@ -104,10 +137,11 @@ intelligence in this free edition. Those are the commercial product.
   degradation by design.
 - GRIP has one controlled real-hardware experiment and a resolved false-alert
   study; it has **no production validation** and does **not** predict failures.
-- AMD collection is not packaged in this edition yet.
+- AMD collection is **experimental** and untested on real AMD hardware by us —
+  best-effort via `amdsmi`, with field-name fallbacks and raw values preserved.
 
 ## Roadmap
 
-A packaged AMD adapter and more exporters. The commercial
-reliability intelligence and fleet plane are separate; this edition stays a clean,
-honest telemetry foundation.
+More exporters, a packaged AMD service installer, and broader hardware coverage.
+The commercial reliability intelligence and fleet plane are separate; this edition
+stays a clean, honest telemetry foundation.
